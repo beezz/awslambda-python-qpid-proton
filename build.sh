@@ -2,7 +2,9 @@
 
 PACKAGE=${1}
 VERSION=${2}
-TMP_DIR="${PACKAGE}_${VERSION}"
+RUNTIME=${3}
+
+TMP_DIR="${RUNTIME}_${PACKAGE}_${VERSION}"
 
 mkdir ${TMP_DIR}
 cd  ${TMP_DIR}
@@ -15,14 +17,14 @@ sudo yum groupinstall -y "Development Tools"
 
 echo "do dependcy install"
 
-sudo yum install -y libffi libffi-devel openssl openssl-devel
+sudo yum install -y openssl openssl-devel cyrus-sasl-devel
 
-ENV="env-${PACKAGE}-${VERSION}"
+ENV="env-${RUNTIME}-${PACKAGE}-${VERSION}"
 
 echo "make ${ENV}"
-virtualenv "${ENV}"
+virtualenv -p ${RUNTIME} "${ENV}"
 
-echo "activate env in `pwd`"
+echo "activate env in $(pwd)"
 source "${ENV}/bin/activate"
 
 # https://github.com/pypa/pip/issues/3056
@@ -32,8 +34,11 @@ echo 'install-purelib=$base/lib64/python' >> ./setup.cfg
 
 TARGET_DIR=${ENV}/packaged
 echo "install pips"
-pip install --verbose --use-wheel --no-dependencies --target ${TARGET_DIR} "${PACKAGE}==${VERSION}"
+${RUNTIME} -m pip install --verbose --use-wheel --no-dependencies --target ${TARGET_DIR} "${PACKAGE}==${VERSION}"
 deactivate
 
-cd ${TARGET_DIR} && tar -zcvf ../../../${PACKAGE}-${VERSION}.tar.gz * && cd ../../..
+find ${TARGET_DIR} -type f -name '*.py[co]' -exec rm -f {} \;
+find ${TARGET_DIR} -type d -name '__pycache__' -exec rm -rf {} \;
+
+cd ${TARGET_DIR} && tar -zcvf ../../../${RUNTIME}-${PACKAGE}-${VERSION}.tar.gz * && cd ../../..
 rm -rf ${TMP_DIR}
